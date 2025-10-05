@@ -234,10 +234,19 @@
       <button id="btnPrev" class="btn ghost" aria-label="Anterior">
         ⟵ Anterior
       </button>
+      <button
+        id="btnAudio"
+        class="btn ghost"
+        aria-label="Reproducir o pausar pista sonora"
+      >
+        Reproducir pista
+      </button>
       <button id="btnNext" class="btn next" aria-label="Siguiente">
         Siguiente ⟶
       </button>
     </div>
+
+    <audio id="bgAudio" src="audio/audio.mp3" preload="auto"></audio>
 
     <script>
       // ====== RUTAS DE IMÁGENES (11 en total) ======
@@ -255,6 +264,9 @@
       const zoneRight = document.getElementById("zoneRight");
       const fullscreenBtn = document.getElementById("fullscreenBtn");
       const warn = document.getElementById("warn");
+
+      const bgAudio = document.getElementById("bgAudio");
+      const btnAudio = document.getElementById("btnAudio");
 
       const topbarEl = document.querySelector(".topbar");
       const controlsBarEl = document.querySelector(".controls-bar");
@@ -304,6 +316,28 @@
       window.addEventListener("keydown", (e) => {
         if (e.key === "ArrowRight") goNext();
         if (e.key === "ArrowLeft") goPrev();
+      });
+
+      btnAudio.onclick = async () => {
+        try {
+          if (bgAudio.paused) {
+            await bgAudio.play();
+            btnAudio.textContent = "Pausar pista";
+            btnAudio.classList.remove("ghost");
+          } else {
+            bgAudio.pause();
+            btnAudio.textContent = "Reproducir pista";
+            btnAudio.classList.add("ghost");
+          }
+        } catch (e) {
+          if (warn) warn.textContent = "⚠️ No se pudo reproducir el audio.";
+          console.error(e);
+        }
+      };
+
+      bgAudio.addEventListener("ended", () => {
+        btnAudio.textContent = "Reproducir pista";
+        btnAudio.classList.add("ghost");
       });
 
       // ====== Pantalla completa ======
