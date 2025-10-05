@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Carousel</title>
+    <style>
+      :root {
+        --book-ar: 1.6; /* relación de aspecto inicial; se recalcula con la 1ª imagen */
+        --secondary: #ffffff;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html,
+      body {
+        height: 100%;
+        width: 100%;
+        overflow: hidden;
+        background: #1a1a1a;
+        color: #e5e7eb;
+        font-family: system-ui, Segoe UI, Roboto, Arial;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* ======== TOPBAR ======== */
+      .topbar {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 20px;
+        background: rgba(0, 0, 0, 0.35);
+        backdrop-filter: blur(8px);
+        z-index: 100;
+        min-height: 72px;
+      }
+      .topbar-left,
+      .topbar-right {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex: 0 0 auto;
+      }
+      .logo {
+        width: clamp(140px, 24vw, 300px);
+        height: auto;
+        display: block;
+        object-fit: contain;
+        opacity: 0.95;
+      }
+      .topbar-title {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: min(70vw, 450px);
+        text-align: center;
+        font-size: 30px;
+        font-weight: 900;
+        letter-spacing: 0.3px;
+        pointer-events: none;
+      }
+      @media (max-width: 900px) {
+        .topbar {
+          display: grid;
+          grid-template-columns: auto 1fr auto;
+          align-items: center;
+          gap: 10px;
+        }
+        .topbar-title {
+          position: static;
+          transform: none;
+          width: auto;
+          min-width: 0;
+          pointer-events: auto;
+          font-size: clamp(18px, 5vw, 28px);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .logo {
+          width: clamp(120px, 22vw, 220px);
+        }
+        .topbar-right .btn {
+          font-size: 14px;
+          padding: 8px 12px;
+        }
+      }
+
+      /* ======== BOTONES ======== */
+      .btn {
+        appearance: none;
+        border: none;
+        background: var(--secondary);
+        color: #fff;
+        padding: 12px 18px;
+        border-radius: 12px;
+        cursor: pointer;
+        font-weight: 700;
+        box-shadow: 0 6px 20px rgba(106, 27, 154, 0.18),
+          0 0 12px rgba(255, 255, 255, 0.45);
+        transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+      }
+      .btn.ghost {
+        background: transparent;
+        color: var(--secondary);
+        border: 1.5px solid var(--secondary);
+      }
+      .btn:hover {
+        transform: translateY(-1px);
+        filter: brightness(1.2);
+      }
+      .btn.next {
+        color: black;
+      }
+
+      /* ======== ESCENARIO / VISOR ======== */
+      .stage {
+        flex: 1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+        overflow: hidden;
+      }
+      .book {
+        position: relative;
+        display: inline-block;
+        aspect-ratio: var(--book-ar);
+        width: 95vw;
+        max-width: 1800px;
+      }
+
+      /* Imagen actual del carrusel */
+      #slide {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: block;
+        border-radius: 12px;
+        background: #0f0f0f;
+      }
+
+      /* Indicador */
+      .page-indicator {
+        position: absolute;
+        bottom: 12px;
+        right: 20px;
+        background: rgba(2, 6, 23, 0.7);
+        padding: 8px 12px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        font-weight: 800;
+      }
+
+      /* Zonas clicables (para navegar con clic/tap a izquierda/derecha) */
+      .hotzones {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        z-index: 50;
+      }
+      .hotzones button {
+        background: transparent;
+        border: 0;
+        cursor: pointer;
+      }
+
+      /* Barra de controles inferior */
+      .controls-bar {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        gap: 22px;
+        padding: 14px 20px;
+        background: linear-gradient(
+          180deg,
+          rgba(0, 0, 0, 0),
+          rgba(0, 0, 0, 0.25)
+        );
+      }
+      .controls-bar .btn {
+        padding: 14px 22px;
+        border-radius: 12px;
+        font-size: 18px;
+      }
+
+      .warn {
+        position: absolute;
+        left: 12px;
+        bottom: 12px;
+        font-size: 12px;
+        opacity: 0.7;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <div class="topbar-left">
+        <img src="img/logo.png" alt="Logo" class="logo" />
+      </div>
+      <div class="topbar-title">¿Como se inventó la ciencia?</div>
+      <div class="topbar-right">
+        <button id="fullscreenBtn" class="btn ghost">
+          Pantalla completa ⛶
+        </button>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="book" id="book">
+        <img id="slide" alt="Imagen 1" />
+        <div class="hotzones">
+          <button id="zoneLeft" aria-label="Anterior"></button>
+          <button id="zoneRight" aria-label="Siguiente"></button>
+        </div>
+        <div class="page-indicator" id="pageIndicator">1 / 11</div>
+        <div class="warn" id="warn"></div>
+      </div>
+    </div>
+
+    <!-- NAV inferior -->
+    <div
+      class="controls-bar"
+      role="toolbar"
+      aria-label="Controles de navegación"
+    >
+      <button id="btnPrev" class="btn ghost" aria-label="Anterior">
+        ⟵ Anterior
+      </button>
+      <button id="btnNext" class="btn next" aria-label="Siguiente">
+        Siguiente ⟶
+      </button>
+    </div>
+
+    <script>
+      // ====== RUTAS DE IMÁGENES (11 en total) ======
+      const IMAGES = Array.from(
+        { length: 11 },
+        (_, i) => `img/page${String(i + 1).padStart(2, "0")}.jpg`
+      );
+
+      const book = document.getElementById("book");
+      const slideEl = document.getElementById("slide");
+      const pageIndicator = document.getElementById("pageIndicator");
+      const btnPrev = document.getElementById("btnPrev");
+      const btnNext = document.getElementById("btnNext");
+      const zoneLeft = document.getElementById("zoneLeft");
+      const zoneRight = document.getElementById("zoneRight");
+      const fullscreenBtn = document.getElementById("fullscreenBtn");
+      const warn = document.getElementById("warn");
+
+      const topbarEl = document.querySelector(".topbar");
+      const controlsBarEl = document.querySelector(".controls-bar");
+
+      function getAvailableHeight() {
+        const topH = topbarEl ? topbarEl.offsetHeight : 0;
+        const bottomH = controlsBarEl ? controlsBarEl.offsetHeight : 0;
+        return Math.max(200, window.innerHeight - topH - bottomH - 8);
+      }
+      function sizeBook() {
+        const ar =
+          parseFloat(
+            getComputedStyle(document.documentElement).getPropertyValue(
+              "--book-ar"
+            )
+          ) || 1.6;
+        const availH = getAvailableHeight();
+        const width = Math.min(window.innerWidth * 0.95, availH * ar);
+        book.style.width = width + "px";
+      }
+
+      // ====== Estado & Navegación (carrusel) ======
+      let index = 0; // 0..10
+      const total = IMAGES.length;
+
+      function setSlide(i) {
+        index = Math.max(0, Math.min(total - 1, i));
+        const src = IMAGES[index];
+        slideEl.src = src;
+        slideEl.alt = `Imagen ${index + 1}`;
+        pageIndicator.textContent = `${index + 1} / ${total}`;
+        btnPrev.disabled = index === 0;
+        btnNext.disabled = index === total - 1;
+      }
+
+      function goNext() {
+        setSlide(index + 1);
+      }
+      function goPrev() {
+        setSlide(index - 1);
+      }
+
+      btnPrev.onclick = goPrev;
+      btnNext.onclick = goNext;
+      zoneLeft.onclick = goPrev;
+      zoneRight.onclick = goNext;
+      window.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowRight") goNext();
+        if (e.key === "ArrowLeft") goPrev();
+      });
+
+      // ====== Pantalla completa ======
+      fullscreenBtn.onclick = () => {
+        if (!document.fullscreenElement) {
+          (
+            book.requestFullscreen ||
+            book.webkitRequestFullscreen ||
+            book.msRequestFullscreen
+          ).call(book);
+          fullscreenBtn.textContent = "Salir de pantalla completa ✖";
+        } else {
+          (
+            document.exitFullscreen ||
+            document.webkitExitFullscreen ||
+            document.msExitFullscreen
+          ).call(document);
+          fullscreenBtn.textContent = "Pantalla completa ⛶";
+        }
+      };
+
+      // ====== Autodetección de proporción (usa la primera imagen válida) ======
+      function setBookAspect(w, h) {
+        const ar = w > 0 && h > 0 ? w / h : 1.6; // UNA sola imagen
+        document.documentElement.style.setProperty("--book-ar", String(ar));
+        sizeBook();
+      }
+      function autodetectAspect() {
+        let idx = 0;
+        const tryNext = () => {
+          if (idx >= IMAGES.length) {
+            warn.textContent = "⚠️ No se pudo leer ninguna imagen.";
+            setBookAspect(1, 1);
+            return;
+          }
+          const test = new Image();
+          test.onload = () => {
+            setBookAspect(test.naturalWidth, test.naturalHeight);
+            warn.textContent = "";
+          };
+          test.onerror = () => {
+            idx++;
+            tryNext();
+          };
+          test.src = IMAGES[idx];
+        };
+        tryNext();
+      }
+
+      window.addEventListener("resize", sizeBook);
+
+      // Inicio
+      autodetectAspect();
+      setSlide(0);
+      sizeBook();
+    </script>
+  </body>
+</html>
